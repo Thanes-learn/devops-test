@@ -1,0 +1,46 @@
+# bitbucket-pipelines.yml
+pipelines:
+  pull-requests:
+    "**":
+      - step:
+          name: "Build"
+          runs-on:
+            - self.hosted
+            - minikube
+          image: docker:24.0.2
+          script:
+            - IMAGE="pr-${BITBUCKET_PR_ID}-${BITBUCKET_COMMIT:0:8}"
+            - docker build -t "$IMAGE" .
+
+      - step:
+          name: "Trivy Scan"
+          runs-on:
+            - self.hosted
+            - minikube
+          script:
+            - curl -fsSL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin
+            - trivy image --exit-code 1 --severity HIGH,CRITICAL "$IMAGE"
+
+      - step:
+          name: "SonarQube"
+          runs-on:
+            - self.hosted
+            - minikube
+          script:
+            - docker run --rm -e SONAR_HOST_URL="$SONAR_HOST_URL" -e SONAR_LOGIN="$SONAR_TOKEN" -v "$(pwd):/usr/src" sonarsource/sonar-scanner-cli -Dsonar.projectBaseDir=/usr/src -Dsonar.sources=.
+
+      - step:
+          name: "Deploy Helm"
+          runs-on:
+            - self.hosted
+            - minikube
+          script:
+            - helm upgrade --install "pr-${BITBUCKET_PR_ID}" "./chart" --namespace devops-test --set  --wait
+
+      - step:
+          name: "Verify"
+          runs-on:
+            - self.hosted
+            - minikube
+          script:
+            - kubectl get pods -n review

@@ -1,0 +1,35 @@
+# M1/ARM-compatible Dockerfile based on your original, fixed for common issues
+FROM python:3.7-slim-bullseye
+
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PIP_NO_CACHE_DIR=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1
+
+WORKDIR /app/code
+COPY code/ /app/code/
+
+# Install required OS deps (combined to reduce layers)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    gcc \
+    curl \
+    openssh-server \
+    default-jre \
+    ca-certificates \
+    libssl-dev \
+    libffi-dev \
+    python3-dev \
+ && rm -rf /var/lib/apt/lists/*
+
+# Upgrade pip safely using the interpreter's pip
+RUN python -m pip install --upgrade pip setuptools wheel
+
+# Install Python deps
+RUN python -m pip install --no-cache-dir -r requirements.txt
+
+# Ensure entrypoint is executable
+RUN chmod +x ./entrypoint.sh
+
+EXPOSE 80
+ENTRYPOINT ["./entrypoint.sh"]

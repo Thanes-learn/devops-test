@@ -1,0 +1,40 @@
+replicaCount: 1
+
+imagePullSecrets: []
+
+web:
+  image:
+    repository: docker.io/library/devops-test-web
+    tag: mac_m1
+    pullPolicy: IfNotPresent
+  service:
+    type: LoadBalancer
+    port: 80
+  resources: {}
+  env:
+    ID: "1234"
+    MYSQL_HOST: myapp-db
+    MYSQL_DATABASE: targets
+    MYSQL_USER: targets
+    MYSQL_PASSWORD: password
+
+db:
+  image:
+    repository: mysql
+    tag: "8.0"
+    pullPolicy: IfNotPresent
+  rootPassword: rootpassword
+  database: targets
+  user: targets
+  password: password
+  service:
+    type: ClusterIP
+    port: 3306
+  persistence:
+    enabled: true
+    accessMode: ReadWriteOnce
+    size: 8Gi
+ingress:
+  enabled: true
+  host: sample.example.test
+  annotations: {}

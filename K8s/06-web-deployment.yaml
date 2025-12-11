@@ -1,0 +1,54 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: devops-test-web
+  namespace: devops-test
+  labels:
+    app: devops-test-web
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: devops-test-web
+  template:
+    metadata:
+      labels:
+        app: devops-test-web
+    spec:
+      containers:
+        - name: web
+          # Replace with the image you build and push to your registry
+          image: docker.io/library/devops-test-web:mac_m1
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 80
+              name: http
+          env:
+            - name: MYSQL_HOST
+              value: devops-test-mysql
+            - name: MYSQL_DATABASE
+              value: targets
+            - name: ID
+              value: '1234'
+            - name: MYSQL_USER
+              valueFrom:
+                secretKeyRef:
+                  name: devops-test-mysql-secret
+                  key: MYSQL_USER
+            - name: MYSQL_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: devops-test-mysql-secret
+                  key: MYSQL_PASSWORD
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 80
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 80
+            initialDelaySeconds: 20
+            periodSeconds: 20

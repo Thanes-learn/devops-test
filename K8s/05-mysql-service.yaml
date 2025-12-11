@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: devops-test-mysql
+  namespace: devops-test
+spec:
+  selector:
+    app: devops-test-mysql
+  ports:
+    - port: 3306
+      targetPort: 3306
+      protocol: TCP
+      name: mysql
+  type: ClusterIP

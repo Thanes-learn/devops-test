@@ -1,0 +1,52 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "myapp.fullname" . }}-db
+spec:
+  selector:
+    matchLabels:
+      app: {{ include "myapp.fullname" . }}-db
+  template:
+    metadata:
+      labels:
+        app: {{ include "myapp.fullname" . }}-db
+    spec:
+      containers:
+        - name: mysql
+          image: "{{ .Values.db.image.repository }}:{{ .Values.db.image.tag }}"
+          imagePullPolicy: {{ .Values.db.image.pullPolicy }}
+          env:
+            - name: MYSQL_ROOT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "myapp.fullname" . }}-db-secret
+                  key: mysql-root-password
+            - name: MYSQL_DATABASE
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "myapp.fullname" . }}-db-secret
+                  key: mysql-database
+            - name: MYSQL_USER
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "myapp.fullname" . }}-db-secret
+                  key: mysql-user
+            - name: MYSQL_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "myapp.fullname" . }}-db-secret
+                  key: mysql-password
+          ports:
+            - containerPort: 3306
+          volumeMounts:
+            - name: mysql-data
+              mountPath: /var/lib/mysql
+            - name: mysql-seed
+              mountPath: /docker-entrypoint-initdb.d
+      volumes:
+        - name: mysql-data
+          persistentVolumeClaim:
+            claimName: {{ include "myapp.fullname" . }}-db-pvc
+        - name: mysql-seed
+          configMap:
+            name: {{ include "myapp.fullname" . }}-db-seed

@@ -1,0 +1,81 @@
+# .gitlab-ci.yml
+stages:
+  - clone
+  - build
+  - security
+  - sonar
+  - deploy
+  - verify
+
+variables:
+  HELM_CHART_PATH: "./chart"
+  HELM_RELEASE: "mr-$CI_MERGE_REQUEST_IID"
+  HELM_NAMESPACE: "review"
+  SERVICE_CHECK_PATH: "/"
+  SERVICE_CHECK_PORT: "80"
+  IMAGE_NAME: "$CI_REGISTRY_IMAGE"
+  IMAGE_TAG: "$CI_COMMIT_SHORT_SHA"
+  IMAGE_FULL: "$IMAGE_NAME:$IMAGE_TAG"
+
+.default_job:
+  tags:
+    - minikube
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+      when: always
+    - when: never
+
+clone:
+  extends: .default_job
+  stage: clone
+  script:
+    - ls -la
+
+build:
+  extends: .default_job
+  stage: build
+  script:
+    - docker build -t "$IMAGE_FULL" .
+    - docker image inspect "$IMAGE_FULL"
+  artifacts:
+    expire_in: 1h
+    reports:
+      dotenv: build.env
+  after_script:
+    - echo "IMAGE_FULL=$IMAGE_FULL" >> build.env
+
+trivy-scan:
+  extends: .default_job
+  stage: security
+  image: alpine:3.18
+  before_script:
+    - apk add --no-cache curl bash
+    - curl -fsSL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin
+  script:
+    - trivy image --exit-code 1 --severity HIGH,CRITICAL "$IMAGE_FULL"
+
+sonarqube-scan:
+  extends: .default_job
+  stage: sonar
+  image: docker:24.0.2
+  services:
+    - name: docker:24-dind
+      alias: docker
+  variables:
+    DOCKER_TLS_CERTDIR: ""
+  script:
+    - docker run --rm -e SONAR_HOST_URL="$SONAR_HOST_URL" -e SONAR_LOGIN="$SONAR_TOKEN" -v "$CI_PROJECT_DIR":/usr/src sonarsource/sonar-scanner-cli -Dsonar.projectBaseDir=/usr.src -Dsonar.host.url="$SONAR_HOST_URL" -Dsonar.login="$SONAR_TOKEN" -Dsonar.sources=.
+
+deploy:
+  extends: .default_job
+  stage: deploy
+  image: alpine:3.18
+  script:
+    - helm upgrade --install "$HELM_RELEASE" "$HELM_CHART_PATH" --namespace "$HELM_NAMESPACE" --set image.repository="$IMAGE_FULL" --wait
+
+verify:
+  extends: .default_job
+  stage: verify
+  image: alpine:3.18
+  script:
+    - kubectl get pods -n "$HELM_NAMESPACE"

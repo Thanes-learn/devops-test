@@ -1,0 +1,23 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: devops-test-web
+  namespace: devops-test
+spec:
+  selector:
+    app: devops-test-web
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 80
+      name: http
+  type: ClusterIP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: devops-test-web
+  namespace: kube-system
+spec:
+  type: ExternalName
+  externalName: devops-test-web.devops-test.svc.cluster.local

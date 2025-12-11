@@ -1,0 +1,32 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "myapp.fullname" . }}-web
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app: {{ include "myapp.fullname" . }}-web
+  template:
+    metadata:
+      labels:
+        app: {{ include "myapp.fullname" . }}-web
+    spec:
+      imagePullSecrets: {{ toYaml .Values.imagePullSecrets | default "[]" | nindent 8 }}
+      containers:
+        - name: {{ include "myapp.fullname" . }}-web
+          image: "{{ .Values.web.image.repository }}:{{ .Values.web.image.tag }}"
+          imagePullPolicy: {{ .Values.web.image.pullPolicy }}
+          ports:
+            - containerPort: 80
+          env:
+            - name: ID
+              value: {{ .Values.web.env.ID | quote }}
+            - name: MYSQL_HOST
+              value: {{ include "myapp.fullname" . }}-db
+            - name: MYSQL_DATABASE
+              value: {{ .Values.web.env.MYSQL_DATABASE | quote }}
+            - name: MYSQL_USER
+              value: {{ .Values.web.env.MYSQL_USER | quote }}
+            - name: MYSQL_PASSWORD
+              value: {{ .Values.web.env.MYSQL_PASSWORD | quote }}
