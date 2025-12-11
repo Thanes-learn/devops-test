@@ -8,7 +8,7 @@ metadata:
     ingress.kubernetes.io/rewrite-target: /
 spec:
   rules:
-    - host: target.example.test
+    - host: target.example.com
       http:
         paths:
           - path: /

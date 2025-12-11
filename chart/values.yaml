@@ -36,5 +36,5 @@ db:
     size: 8Gi
 ingress:
   enabled: true
-  host: sample.example.test
+  host: helm.example.com
   annotations: {}
